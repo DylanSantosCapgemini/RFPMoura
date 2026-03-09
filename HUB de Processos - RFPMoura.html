@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HUB de Processos - RFPMoura</title>
+
+  <script src="https://bumbu.me/svg-pan-zoom/dist/svg-pan-zoom.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f4f7f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      gap: 10px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    /* NOVO: barra de seleção de diretoria */
+    .switcher {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 6px 0 4px;
+    }
+
+    .switcher button {
+      padding: 8px 14px;
+      cursor: pointer;
+      background: #343a40; /* cor neutra */
+      color: white;
+      border: none;
+      border-radius: 999px;
+      font-weight: bold;
+      letter-spacing: 0.3px;
+      opacity: 0.95;
+      transition: 0.15s ease-in-out;
+    }
+
+    .switcher button:hover { opacity: 1; transform: translateY(-1px); }
+
+    /* botão selecionado */
+    .switcher button.active {
+      background: #1f5fbf;
+      box-shadow: 0 3px 10px rgba(31, 95, 191, 0.25);
+    }
+
+    /* placeholder (ainda não existe o SVG) */
+    .switcher button.disabled {
+      background: #adb5bd;
+      cursor: not-allowed;
+      opacity: 0.8;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .map-container {
+      width: 90vw;
+      height: 72vh;
+      border: 2px solid #adb5bd;
+      border-radius: 8px;
+      background-color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #svg-object { width: 100%; height: 100%; }
+
+    .controls {
+      margin-top: 4px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .controls button {
+      padding: 8px 15px;
+      cursor: pointer;
+      background: #1f5fbf;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: 0.15s ease-in-out;
+    }
+
+    .controls button:hover { background: #16468e; }
+
+    .footer-note {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #6c757d;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>Mapa Mental de Processos (AS-IS)</h1>
+    <p>Use o <b>Scroll</b> para Zoom e <b>Arraste</b> para mover.</p>
+  </div>
+
+  <!-- NOVO: Botões de seleção -->
+  <div class="switcher" aria-label="Seleção de diretoria">
+    <button id="btn-dcbe" class="active" data-map="RFPMoura_DCBE_Processos_MindMap.svg">DCBE</button>
+    <button id="btn-dcbt" data-map="RFPMoura_DCBT_Processos_MindMap.svg">DCBT</button>
+    <button id="btn-dcex" data-map="RFPMoura_DCEX_Processos_MindMap.svg">DCEX</button>
+    <button id="btn-dcm" data-map="RFPMoura_DCM_Montadoras_MindMap.svg">DCM</button>
+    <!-- <button id="btn-dcm"  class="disabled" data-map="" title="Mindmap ainda não criado">DCM</button> -->
+  </div>
+
+  <div class="map-container">
+    <object id="svg-object" data="RFPMoura_DCBE_Processos_MindMap.svg" type="image/svg+xml">
+      Seu navegador não suporta a visualização de SVG.
+    </object>
+  </div>
+
+  <div class="controls">
+    <button id="zoom-in"> + Zoom </button>
+    <button id="zoom-out"> - Zoom </button>
+    <button id="reset"> Resetar Visão </button>
+  </div>
+
+  <div class="footer-note" id="status-msg">
+    Aguardando carregamento do mapa...
+  </div>
+
+  <script>
+    // Variável global
+    var panZoomInstance;
+
+    const svgObject = document.getElementById('svg-object');
+    const statusMsg = document.getElementById('status-msg');
+
+    // Lista de botões do switcher
+    const switchButtons = Array.from(document.querySelectorAll('.switcher button'));
+
+    function setActiveButton(activeBtn) {
+      switchButtons.forEach(b => b.classList.remove('active'));
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    function destroyPanZoom() {
+      if (panZoomInstance) {
+        try {
+          panZoomInstance.destroy();
+        } catch (e) {
+          // se der ruim, só ignora (varia por versão)
+        }
+        panZoomInstance = null;
+      }
+    }
+
+    function initPanZoom() {
+      try {
+        destroyPanZoom();
+
+        panZoomInstance = svgPanZoom('#svg-object', {
+          zoomEnabled: true,
+          controlIconsEnabled: true,
+          fit: true,
+          center: true,
+          minZoom: 0.1,
+          maxZoom: 10,
+          mouseWheelZoomEnabled: true
+        });
+
+        // Botões de zoom
+        document.getElementById('zoom-in').onclick = function () { panZoomInstance.zoomIn(); };
+        document.getElementById('zoom-out').onclick = function () { panZoomInstance.zoomOut(); };
+        document.getElementById('reset').onclick = function () {
+          panZoomInstance.resetZoom();
+          panZoomInstance.center();
+        };
+
+        statusMsg.innerText = "Mapa carregado com sucesso!";
+        console.log("SVG Pan Zoom inicializado.");
+
+      } catch (err) {
+        statusMsg.innerHTML =
+          "<b style='color:red'>Erro de Segurança:</b> Você precisa abrir este arquivo usando o <b>Live Server</b> do VS Code para que os botões funcionem.";
+        console.error("Erro ao acessar o SVG:", err);
+      }
+    }
+
+    // Troca de mapa (DCBE/DCBT/...)
+    function loadMap(svgFile, clickedBtn) {
+      if (!svgFile) {
+        statusMsg.innerText = "Mindmap ainda não criado para este botão (placeholder).";
+        return;
+      }
+
+      statusMsg.innerText = "Carregando mapa...";
+      setActiveButton(clickedBtn);
+
+      // Importante: reinicializa quando o SVG terminar de carregar
+      destroyPanZoom();
+      svgObject.setAttribute('data', svgFile);
+    }
+
+    // Evento: ao terminar de carregar o SVG dentro do <object>, inicializa zoom/pan
+    svgObject.addEventListener('load', function () {
+      initPanZoom();
+    });
+
+    // Eventos dos botões do switcher
+    document.getElementById('btn-dcbe').addEventListener('click', function () {
+      loadMap(this.dataset.map, this);
+    });
+
+    document.getElementById('btn-dcbt').addEventListener('click', function () {
+      loadMap(this.dataset.map, this);
+    });
+
+    document.getElementById('btn-dcex').addEventListener('click', function () {
+      loadMap(this.dataset.map, this);
+    });
+
+    document.getElementById('btn-dcm').addEventListener('click', function () {
+      loadMap(this.dataset.map, this);
+    });
+
+    // Ajusta o zoom se a janela mudar de tamanho
+    window.addEventListener('resize', function () {
+      if (panZoomInstance) panZoomInstance.resize();
+    });
+  </script>
+</body>
+</html>
